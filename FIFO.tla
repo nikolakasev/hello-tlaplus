@@ -1,9 +1,11 @@
 -------------------------------- MODULE FIFO --------------------------------
 EXTENDS Naturals, Sequences
 
-CONSTANT Message
+CONSTANT Message, N
 
 VARIABLES in, out, q
+
+ASSUME (N \in Nat) /\ (N > 0) \* positive natural number
 
 InChan == INSTANCE Channel WITH Data <- Message, chan <- in
     (* Message substituted for Data and in substituted for chan *)
@@ -24,6 +26,9 @@ SSend(msg) == /\ InChan!Send(msg)
 BufRcv == /\ InChan!Rcv
           /\ q' = Append(q, in.val)
           /\ UNCHANGED out
+
+BoundedRcv == /\ (Len(q) < N)
+              /\ BufRcv  
           
 BufSend == /\ q /= <<>> \* can send to the buffer only if the queue is not empty
            /\ OutChan!Send(out.val)
@@ -34,7 +39,7 @@ RRcv == /\ OutChan!Rcv
         /\ UNCHANGED <<in, q>>
 
 Next == \/ (\E m \in Message : SSend(m))
-        \/ BufRcv
+        \/ BoundedRcv
         \/ BufSend
         \/ RRcv
 
@@ -46,5 +51,5 @@ THEOREM Spec => []TypeInvariant
 
 =============================================================================
 \* Modification History
-\* Last modified Sun Jun 10 15:12:41 CEST 2018 by Nikola
+\* Last modified Sun Jun 10 16:15:50 CEST 2018 by Nikola
 \* Created Sun Jun 10 14:29:18 CEST 2018 by Nikola
