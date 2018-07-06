@@ -2,7 +2,7 @@
 EXTENDS MemoryInterface
 VARIABLES mem, ctl, buf
 
-Init == /\ mem \in [Adr |-> Val]
+IInit == /\ mem \in [Adr |-> Val]
         /\ ctl = [p \in Proc |-> "ready"] \*each processor is ready to process instructions
         /\ buf = [p \in Proc |-> NoVal] \*each buffer is initialized to NoVal
         /\ memInt \in InitMemInt
@@ -37,11 +37,11 @@ Rsp(p) == /\ ctl[p] = "done"
           
 INext == \E p \in Proc: Req(p) \/ Do(p) \/ Rsp(p) \*the next state action
 
-ISpec == Init /\ [][INext]_<<memInt, mem, ctl, buf>>
+ISpec == IInit /\ [][INext]_<<memInt, mem, ctl, buf>>
 
 -----
 THEOREM ISpec => []TypeInvariant
 =============================================================================
 \* Modification History
-\* Last modified Tue Jul 03 17:12:58 CEST 2018 by nikola
+\* Last modified Fri Jul 06 14:09:38 CEST 2018 by nikola
 \* Created Mon Jul 02 17:33:48 CEST 2018 by nikola
