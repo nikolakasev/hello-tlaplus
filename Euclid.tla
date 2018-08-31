@@ -3,6 +3,8 @@ EXTENDS Naturals, TLC
 
 CONSTANT N
 
+\* PlusCal options (-termination)
+
 (*  --algorithm EuclidAlg
     
 variables u = 24 ; v \in 1 .. N, v_ini = v;
@@ -51,7 +53,8 @@ Next == Lbl_1 \/ Lbl_2
            \/ (* Disjunct to prevent deadlock on termination *)
               (pc = "Done" /\ UNCHANGED vars)
 
-Spec == Init /\ [][Next]_vars
+Spec == /\ Init /\ [][Next]_vars
+        /\ WF_vars(Next)
 
 Termination == <>(pc = "Done")
 
@@ -59,5 +62,5 @@ Termination == <>(pc = "Done")
 
 =============================================================================
 \* Modification History
-\* Last modified Fri Aug 31 11:29:18 CEST 2018 by nikola
+\* Last modified Fri Aug 31 11:31:07 CEST 2018 by nikola
 \* Created Fri Aug 31 11:19:07 CEST 2018 by nikola
