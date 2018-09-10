@@ -9,31 +9,47 @@
     This is a specification of an SBR algorithm as an alternative to https://developer.lightbend.com /docs/akka-commercial-addons/current/split-brain-resolver.html
 *)
 
-CONSTANT Node               \* The set of nodes on the network
+CONSTANT Node           \* The set of nodes on the network
 
-VARIABLE clusterState       \* clusterState[n] is the state of node n from the point of view of the cluster
+VARIABLE actualState    \* actualState[n] is the state of a node
 
-\* VARIABLE nodePerspective    \* nodePerspective[n] is how a node sees all other nodes on the network
+VARIABLE nodeView       \* nodeView[n] is how a node sees all other nodes on the network
 
-TypeOK == /\ clusterState \in [Node -> {"up", "down"}]
-\*          /\ nodePerspective \in [Node -> [Node -> {"up", "unreachable", "down"}]]
+TypeOK == /\ actualState \in [Node -> {"up", "down"}]
+          /\ nodeView \in [Node -> [Node -> {"up", "unreachable", "down"}]]
         
-Init == clusterState = [n \in Node |-> "up"]
+Init == /\ actualState = [n \in Node |-> "up"]                   \* the cluster sees all nodes are up
+        /\ nodeView = [n \in Node |-> [other \in Node |-> "up"]] \* a healthy cluster, all nodes have the same view of the truth
 
-GoUp(n) == /\ clusterState[n] = "down"
-           /\ clusterState' = [clusterState EXCEPT ![n] = "up"]
+GoUp(node) == /\ actualState[node] = "down"
+           /\ actualState' = [actualState EXCEPT ![node] = "up"]
            
-GoDown(n) == /\ clusterState[n] = "up"
-             /\ clusterState' = [clusterState EXCEPT ![n] = "down"]
+GoDown(node) == /\ actualState[node] = "up"
+             /\ actualState' = [actualState EXCEPT ![node] = "down"]
+             
+BecomeUnreachable(node, another) == /\ actualState[node] = "up" \* a node that's down is already marked as such and unreachble is irrelevant
+                                    /\ nodeView[another][node] = "up"
+                                    (* a network glitch occurs, the node is busy with work and no threads available to respond, or it runs out of memory:
+                                       in all those cases a node might seem unreachable to other nodes on the network *)
+                                    /\ nodeView' = [nodeView EXCEPT ![another][node] = "unreachable"]
+                           
+BecomeReachable(node, another) == /\ nodeView[another][node] = "unreachable" \* the network is repaired or the node is responding OK
+                                  /\ nodeView' = [nodeView EXCEPT ![another][node] = "up"]
+                                    
+\*TODO
+MarkAnotherAsDown(node, another) == TRUE
 
-AllAreUp == \A n \in Node : clusterState[n] = "up"
+IsHealthyAccordingTo(node) == \A other \in Node : nodeView[node][other] = "up"
 
-Next == \E n \in Node : GoUp(n) \/ GoDown(n)
+AllAreUp == \A n \in Node : actualState[n] = "up"
 
-Spec == Init /\ [][Next]_clusterState
+Next == \/ \E n \in Node : GoUp(n) \/ GoDown(n)
+        \/ \E m, n \in Node: m /= n /\ (MarkAnotherAsDown(m, n) \/ BecomeUnreachable(m, n) \/ BecomeReachable(m, n)) \*is m /= n necessary?
+
+Spec == Init /\ [][Next]_<<actualState, nodeView>>
 
 
 =============================================================================
 \* Modification History
-\* Last modified Fri Aug 31 18:39:44 CEST 2018 by nikola
+\* Last modified Thu Sep 06 17:19:23 CEST 2018 by nikola
 \* Created Fri Aug 31 13:38:37 CEST 2018 by nikola
