@@ -22,19 +22,21 @@ Init == /\ actualState = [n \in Node |-> "up"]                   \* the cluster 
         /\ nodeView = [n \in Node |-> [other \in Node |-> "up"]] \* a healthy cluster, all nodes have the same view of the truth
 
 GoUp(node) == /\ actualState[node] = "down"
-           /\ actualState' = [actualState EXCEPT ![node] = "up"]
+              /\ actualState' = [actualState EXCEPT ![node] = "up"]
+              /\ UNCHANGED nodeView
            
 GoDown(node) == /\ actualState[node] = "up"
-             /\ actualState' = [actualState EXCEPT ![node] = "down"]
+                /\ actualState' = [actualState EXCEPT ![node] = "down"]
+                /\ UNCHANGED nodeView
              
 BecomeUnreachable(node, another) == /\ actualState[node] = "up" \* a node that's down is already marked as such and unreachble is irrelevant
                                     /\ nodeView[another][node] = "up"
-                                    (* a network glitch occurs, the node is busy with work and no threads available to respond, or it runs out of memory:
-                                       in all those cases a node might seem unreachable to other nodes on the network *)
                                     /\ nodeView' = [nodeView EXCEPT ![another][node] = "unreachable"]
+                                    /\ UNCHANGED actualState
                            
 BecomeReachable(node, another) == /\ nodeView[another][node] = "unreachable" \* the network is repaired or the node is responding OK
                                   /\ nodeView' = [nodeView EXCEPT ![another][node] = "up"]
+                                  /\ UNCHANGED actualState
                                     
 \*TODO
 MarkAnotherAsDown(node, another) == TRUE
@@ -51,5 +53,5 @@ Spec == Init /\ [][Next]_<<actualState, nodeView>>
 
 =============================================================================
 \* Modification History
-\* Last modified Thu Sep 06 17:19:23 CEST 2018 by nikola
+\* Last modified Mon Sep 10 18:57:50 CEST 2018 by nikola
 \* Created Fri Aug 31 13:38:37 CEST 2018 by nikola
