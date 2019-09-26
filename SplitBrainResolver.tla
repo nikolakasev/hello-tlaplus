@@ -15,19 +15,15 @@ VARIABLE actualState    \* actualState[n] is the state of a node
 
 VARIABLE nodeView       \* nodeView[n] is how a node sees all other nodes on the network
 
-TypeOK == /\ actualState \in [Node -> {"up", "down"}]
-          /\ nodeView \in [Node -> [Node -> {"up", "unreachable", "down"}]]
+TypeInvariant == /\ actualState \in [Node -> {"up", "down"}]
+                 /\ nodeView \in [Node -> [Node -> {"up", "unreachable", "down"}]]
         
 Init == /\ actualState = [n \in Node |-> "up"]                   \* the cluster sees all nodes are up
         /\ nodeView = [n \in Node |-> [other \in Node |-> "up"]] \* a healthy cluster, all nodes have the same view of the truth
-
-GoUp(node) == /\ actualState[node] = "down"
-              /\ actualState' = [actualState EXCEPT ![node] = "up"]
-              /\ UNCHANGED nodeView
            
 GoDown(node) == /\ actualState[node] = "up"
                 /\ actualState' = [actualState EXCEPT ![node] = "down"]
-                /\ UNCHANGED nodeView
+                /\ UNCHANGED nodeView \* TODO this isn't correct
              
 BecomeUnreachable(node, another) == /\ actualState[node] = "up" \* a node that's down is already marked as such and unreachble is irrelevant
                                     /\ nodeView[another][node] = "up"
@@ -45,13 +41,15 @@ IsHealthyAccordingTo(node) == \A other \in Node : nodeView[node][other] = "up"
 
 AllAreUp == \A n \in Node : actualState[n] = "up"
 
-Next == \/ \E n \in Node : GoUp(n) \/ GoDown(n)
-        \/ \E m, n \in Node: m /= n /\ (MarkAnotherAsDown(m, n) \/ BecomeUnreachable(m, n) \/ BecomeReachable(m, n)) \*is m /= n necessary?
+AtLeastOneIsUp == \E n \in Node : actualState[n] = "up"
+
+Next == \/ \E n \in Node : GoDown(n)
+        \/ \E m, n \in Node: m /= n /\ (BecomeUnreachable(m, n) \/ BecomeReachable(m, n)) \*is m /= n necessary?
 
 Spec == Init /\ [][Next]_<<actualState, nodeView>>
 
 
 =============================================================================
 \* Modification History
-\* Last modified Mon Sep 10 18:57:50 CEST 2018 by nikola
+\* Last modified Thu Sep 26 17:43:37 CEST 2019 by nikola
 \* Created Fri Aug 31 13:38:37 CEST 2018 by nikola
